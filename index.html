@@ -2043,6 +2043,22 @@ function Btn({ onClick, children, C, style, variant }) {
   return React.createElement("button", { onClick, style: base }, children);
 }
 
+function Inp({ type="text", value, placeholder, onChange, style, C }) {
+  return React.createElement("input", {
+    type, value, placeholder,
+    onChange: e => onChange && onChange(e),
+    style: {
+      width:"100%", boxSizing:"border-box",
+      padding:"12px 14px", borderRadius:10,
+      border:`1px solid ${C?.border||"#3A4A60"}`,
+      background: C?.bgAlt||"#252F42",
+      color: C?.text||"#F0EBE0",
+      fontSize:14, outline:"none",
+      ...style
+    }
+  });
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props){ super(props); this.state={error:null}; }
   static getDerivedStateFromError(e){ return {error:e}; }
