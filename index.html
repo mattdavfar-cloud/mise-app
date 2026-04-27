@@ -1994,6 +1994,89 @@ function LogTodayBtn({ plan, C }) {
   );
 }
 
+// ── SHARED UI HELPERS ────────────────────────────────────────────────────────
+function Modal({ open, onClose, title, C, children }) {
+  if (!open) return null;
+  return React.createElement(React.Fragment, null,
+    React.createElement("div", {
+      onClick: onClose,
+      style: {
+        position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",zIndex:200,
+        display:"flex",alignItems:"flex-end",justifyContent:"center"
+      }
+    },
+      React.createElement("div", {
+        onClick: e => e.stopPropagation(),
+        style: {
+          background: C.surface,
+          borderRadius:"20px 20px 0 0",
+          padding: "20px 20px calc(20px + env(safe-area-inset-bottom))",
+          width:"100%",maxWidth:480,maxHeight:"80dvh",
+          overflowY:"auto",boxSizing:"border-box"
+        }
+      },
+        title && React.createElement("div", {
+          style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:16,
+            display:"flex",justifyContent:"space-between",alignItems:"center"}
+        },
+          title,
+          React.createElement("span", {
+            onClick: onClose,
+            style:{fontSize:20,color:C.muted,cursor:"pointer",lineHeight:1}
+          }, "×")
+        ),
+        children
+      )
+    )
+  );
+}
+
+function Btn({ onClick, children, C, style, variant }) {
+  const base = {
+    display:"block",width:"100%",padding:"14px 16px",
+    borderRadius:12,border:"none",cursor:"pointer",
+    fontSize:14,fontWeight:700,textAlign:"center",
+    background: variant==="ghost" ? "transparent" : C.accent,
+    color: variant==="ghost" ? C.muted : "#000",
+    ...style
+  };
+  return React.createElement("button", { onClick, style: base }, children);
+}
+
+class ErrorBoundary extends React.Component {
+  constructor(props){ super(props); this.state={error:null}; }
+  static getDerivedStateFromError(e){ return {error:e}; }
+  componentDidCatch(e,info){ console.error("Screen crash:", e, info); }
+  render(){
+    if(this.state.error){
+      const C=this.props.C||{bg:"#1C2333",surface:"#252F42",text:"#F0EBE0",accent:"#FFCB57",muted:"#8A9BB0"};
+      return React.createElement("div",{
+        style:{display:"flex",flexDirection:"column",alignItems:"center",
+          justifyContent:"center",height:"100%",gap:16,padding:32,background:C.bg}
+      },
+        React.createElement("div",{style:{fontSize:36}},"⚠️"),
+        React.createElement("div",{style:{color:C.text,fontWeight:700,fontSize:16,textAlign:"center"}},
+          "Something went wrong on this screen"
+        ),
+        React.createElement("div",{style:{color:C.muted,fontSize:13,textAlign:"center"}},
+          this.state.error?.message||"Unknown error"
+        ),
+        React.createElement("button",{
+          onClick:()=>this.setState({error:null}),
+          style:{background:C.accent,color:"#000",border:"none",borderRadius:10,
+            padding:"12px 24px",fontWeight:700,cursor:"pointer",fontSize:14}
+        },"Try Again"),
+        this.props.onBack && React.createElement("button",{
+          onClick:this.props.onBack,
+          style:{background:"transparent",color:C.muted,border:"none",
+            cursor:"pointer",fontSize:13,marginTop:4}
+        },"← Go back")
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ── MEAL PLAN SCREEN v6 ─────────────────────────────────────────────────────
 // Smart slot-aware generator with: servings, leftovers→lunch, dietary filters,
 // skip-days, variety guard, hard budget cap, prep-time preference, slot overrides.
@@ -3699,27 +3782,31 @@ function App(){
     setTab("inventory");setRecipe(null);
   }
 
+  function wrap(screen, key){
+    return React.createElement(ErrorBoundary,{key,C,onBack:()=>setTab("discover")},screen);
+  }
+
   function renderScreen(){
     if(tab==="discover"){
-      if(recipe) return<RecipeDetailScreen recipe={recipe} onBack={()=>setRecipe(null)}
-        inventory={inventory} onAddToGrocery={handleAddToGrocery} C={C}/>;
-      return<DiscoverScreen onSelectRecipe={r=>setRecipe(r)} inventory={inventory}
+      if(recipe) return wrap(<RecipeDetailScreen recipe={recipe} onBack={()=>setRecipe(null)}
+        inventory={inventory} onAddToGrocery={handleAddToGrocery} C={C}/>,"detail");
+      return wrap(<DiscoverScreen onSelectRecipe={r=>setRecipe(r)} inventory={inventory}
         C={C} cardStyle={cardStyle} customRecipes={customRecipes}
-        setCustomRecipes={setCustomRecipes}/>;
+        setCustomRecipes={setCustomRecipes}/>,"discover");
     }
-    if(tab==="inventory") return<InventoryScreen inventory={inventory}
+    if(tab==="inventory") return wrap(<InventoryScreen inventory={inventory}
       setInventory={setInventory} groceryList={groceryList}
-      setGroceryList={setGroceryList} C={C}/>;
-    if(tab==="mealplan")  return<MealPlanScreen inventory={inventory}
-      onAddToGrocery={handleAddToGrocery} C={C} weeklyBudget={weeklyBudget}/>;
-    if(tab==="calories")  return<CalorieTrackerScreen calorieGoal={calorieGoal} C={C}/>;
-    if(tab==="profile")   return<ProfileScreen
+      setGroceryList={setGroceryList} C={C}/>,"inventory");
+    if(tab==="mealplan")  return wrap(<MealPlanScreen inventory={inventory}
+      onAddToGrocery={handleAddToGrocery} C={C} weeklyBudget={weeklyBudget}/>,"mealplan");
+    if(tab==="calories")  return wrap(<CalorieTrackerScreen calorieGoal={calorieGoal} C={C}/>,"calories");
+    if(tab==="profile")   return wrap(<ProfileScreen
       calorieGoal={calorieGoal} setCalorieGoal={setCalorieGoal}
       weeklyBudget={weeklyBudget} setWeeklyBudget={setWeeklyBudget}
       theme={theme}      setTheme={v=>setTweak("theme",v)}
       accentKey={accentKey} setAccentKey={v=>setTweak("accentKey",v)}
       cardStyle={cardStyle}  setCardStyle={v=>setTweak("cardStyle",v)}
-      C={C}/>;
+      C={C}/>,"profile");
   }
 
   if(!onboarded){
